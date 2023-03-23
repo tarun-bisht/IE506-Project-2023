@@ -40,6 +40,11 @@ class LAE(nn.Module):
             z = F.linear(h, fi)
             out = self.decoder(z)
             loss = self.energy.calculate(inputs, out)
+            # train elbo
+            q_z = td.Independent(td.Normal(z, 0.05), 1)
+            p_z = td.Independent(td.Normal(torch.zeros_like(z), torch.ones_like(z)), 1)
+            kl = td.kl_divergence(q_z, p_z).mean()
+            elbo = loss + kl
             # update encoder weight
             self.encoder.net[-1].weight.data = fi.detach()
         else:
