@@ -129,7 +129,7 @@ if __name__ == "__main__":
     elbo_std = torch.std(torch.tensor(elbos)).item()
     print("elbo_mean: ", elbo_mean)
     print("elbo_std: ", elbo_std)
-    with open("log.txt", 'w') as logger:
+    with open("log.txt", 'a') as logger:
         msg = f"elbo_mean: {elbo_mean}\nelbo_std: {elbo_std}"
         logger.write(msg)
 
