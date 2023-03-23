@@ -1,4 +1,5 @@
 import torch
+from tqdm.auto import tqdm
 
 def train_step(model, optimizer, dataloader, epoch, writer=None, detect_anomaly=False):
     model.train()
@@ -8,7 +9,7 @@ def train_step(model, optimizer, dataloader, epoch, writer=None, detect_anomaly=
     N = 0
     device = next(model.parameters()).device
     with torch.autograd.set_detect_anomaly(detect_anomaly):
-        for x, _ in dataloader:
+        for x, _ in tqdm(dataloader):
             x = x.to(device)
             output = model(x)
             loss = output["loss"]

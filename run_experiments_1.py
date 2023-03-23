@@ -69,7 +69,7 @@ def run(args, seed):
 
     # train and validation
     best_elbo = torch.inf
-    for epoch in tqdm(range(1, args.epoch+1)):
+    for epoch in range(1, args.epoch+1):
         train_losses = train_step(model, optimizer, train_dataloader, epoch, writer, args.detect_anomaly)
         val_losses = val_step(model, val_dataloader, epoch, writer)
         # Save model
@@ -77,9 +77,9 @@ def run(args, seed):
             torch.save(model.state_dict(), os.path.join(args.model_path, log_dir, f"model-{epoch}.pt"))
             if epoch > 1:
                 os.remove(os.path.join(args.model_path, log_dir, f"model-{epoch-1}.pt"))
-        print("Train Loss: ", train_losses["loss"], "\t", "Validation Loss: ", val_losses["loss"])
-        if best_elbo > val_losses["elbo"]:
-            best_elbo = val_losses["elbo"]
+        print("EPOCH:", epoch, "Train Loss: ", train_losses["loss"], "\t", "Validation Loss: ", val_losses["loss"], "Reconstruction Loss: ", val_losses["reconstruction_loss"])
+        if best_elbo > val_losses["reconstruction_loss"]:
+            best_elbo = val_losses["reconstruction_loss"]
     val_losses = val_step(model, val_dataloader, epoch, writer)
     
     writer.add_hparams({"model": args.model, "dataset": args.dataset,

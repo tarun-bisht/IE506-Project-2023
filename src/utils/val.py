@@ -1,4 +1,5 @@
 from torchvision.utils import make_grid
+from tqdm.auto import tqdm
 
 def val_step(model, dataloader, epoch, writer=None):
     model.eval()
@@ -7,7 +8,7 @@ def val_step(model, dataloader, epoch, writer=None):
     running_elbo = 0
     N = 0
     device = next(model.parameters()).device
-    for x, _ in dataloader:
+    for x, _ in tqdm(dataloader):
         x = x.to(device)
         output = model(x)
         loss = output["loss"]
