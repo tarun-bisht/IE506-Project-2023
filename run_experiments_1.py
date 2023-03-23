@@ -125,8 +125,8 @@ if __name__ == "__main__":
     for seed in seeds:
         elbo = run(args=args, seed=seed)
         elbos.append(elbo)
-    elbo_mean = torch.mean(elbo).item()
-    elbo_std = torch.std(elbo).item()
+    elbo_mean = torch.mean(torch.tensor(elbos)).item()
+    elbo_std = torch.std(torch.tensor(elbos)).item()
     print("elbo_mean: ", elbo_mean)
     print("elbo_std: ", elbo_std)
     with open("log.txt", 'w') as logger:

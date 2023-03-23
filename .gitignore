@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 temp
 runs
+log.txt
 
 # C extensions
 *.so
