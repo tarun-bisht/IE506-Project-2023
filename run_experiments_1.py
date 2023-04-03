@@ -68,7 +68,7 @@ def run(args, seed):
         os.makedirs(os.path.join(args.model_path, log_dir), exist_ok=True)
 
     # train and validation
-    best_elbo = torch.inf
+    best_rec = torch.inf
     for epoch in range(1, args.epoch+1):
         train_losses = train_step(model, optimizer, train_dataloader, epoch, writer, args.detect_anomaly)
         val_losses = val_step(model, val_dataloader, epoch, writer)
@@ -77,9 +77,9 @@ def run(args, seed):
             torch.save(model.state_dict(), os.path.join(args.model_path, log_dir, f"model-{epoch}.pt"))
             if epoch > 1:
                 os.remove(os.path.join(args.model_path, log_dir, f"model-{epoch-1}.pt"))
-        print("EPOCH:", epoch, "Train Loss: ", train_losses["loss"], "\t", "Validation Loss: ", val_losses["loss"], "Reconstruction Loss: ", val_losses["reconstruction_loss"])
-        if best_elbo > val_losses["reconstruction_loss"]:
-            best_elbo = val_losses["reconstruction_loss"]
+        print("EPOCH:", epoch, "Train Loss: ", train_losses["loss"], "\t", "Validation Loss: ", val_losses["loss"], "\t", "Reconstruction Loss: ", val_losses["reconstruction_loss"])
+        if best_rec > val_losses["reconstruction_loss"]:
+            best_rec = val_losses["reconstruction_loss"]
     val_losses = val_step(model, val_dataloader, epoch, writer)
     
     writer.add_hparams({"model": args.model, "dataset": args.dataset,
@@ -88,7 +88,7 @@ def run(args, seed):
                         "epoch": args.epoch, "seed": args.seed},
                         {"loss": val_losses["loss"]})
     writer.close()
-    return best_elbo
+    return best_rec
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Deep Latent Variable LAE Paper Project Experiment")
@@ -121,15 +121,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     seeds = [11, 34, 77]
-    elbos = []
+    recs = []
     for seed in seeds:
-        elbo = run(args=args, seed=seed)
-        elbos.append(elbo)
-    elbo_mean = torch.mean(torch.tensor(elbos)).item()
-    elbo_std = torch.std(torch.tensor(elbos)).item()
-    print("elbo_mean: ", elbo_mean)
-    print("elbo_std: ", elbo_std)
+        rec = run(args=args, seed=seed)
+        recs.append(rec)
+    rec_mean = torch.mean(torch.tensor(recs)).item()
+    rec_std = torch.std(torch.tensor(recs)).item()
+    print("rec_mean: ", rec_mean)
+    print("rec_std: ", rec_std)
     with open("log.txt", 'a') as logger:
-        msg = f"elbo_mean: {elbo_mean}\nelbo_std: {elbo_std}"
+        msg = f"rec_mean: {rec_mean}\telbo_std: {rec_std}\n \n"
         logger.write(msg)
 

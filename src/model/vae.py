@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.distributions as td
+import copy
 
 class VAE(nn.Module):
     # input_shape without batch_size
@@ -31,19 +32,41 @@ class VAE(nn.Module):
         q_z = td.Independent(td.Normal(mu_z, sigma_z), 1)
         z = q_z.rsample()
         out = self.decoder(z)
-
         # calculate loss
         energy = self.energy.calculate(inputs, out)
         p_z = td.Independent(td.Normal(torch.zeros_like(z), torch.ones_like(z)), 1)
         regularization = td.kl_divergence(q_z, p_z).mean()
         loss = energy + regularization
 
-        return {"output":out, "loss":loss, "reconstruction_loss": energy, "elbo": loss}
+        return {"output":out, "loss":loss, "reconstruction_loss": energy}
 
     def sample(self, num_points=1):
         z = torch.randn(num_points, *self.__z_shape, device=next(self.parameters()).device)
         out = self.decoder(z)
         return out
+
+
+class Encoder(nn.Module):
+
+    def __init__(self, layers: list):
+        super(Encoder, self).__init__()
+        self.net = nn.Sequential(*layers[:-1])
+        self.mu = layers[-1]
+        self.logvar = copy.deepcopy(layers[-1])
+    
+    def forward(self, inputs):
+        inputs = self.net(inputs)
+        return self.mu(inputs), self.logvar(inputs)
+
+
+class Decoder(nn.Module):
+
+    def __init__(self, layers: list, ):
+        super(Decoder, self).__init__()
+        self.net = nn.Sequential(*layers)
+    
+    def forward(self, inputs):
+        return self.net(inputs)
 
 
 if __name__ == "__main__":

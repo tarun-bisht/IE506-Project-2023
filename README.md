@@ -9,5 +9,5 @@ pip install -r requirements.txt
 ## Running Experiments
 
 ```bash
-python run_experiments.txt
+python run_experiments_i.txt
 ```

@@ -40,11 +40,6 @@ class LAE(nn.Module):
             z = F.linear(h, fi)
             out = self.decoder(z)
             loss = self.energy.calculate(inputs, out)
-            # train elbo
-            q_z = td.Independent(td.Normal(z, 0.05), 1)
-            p_z = td.Independent(td.Normal(torch.zeros_like(z), torch.ones_like(z)), 1)
-            kl = td.kl_divergence(q_z, p_z).mean()
-            elbo = loss + kl
             # update encoder weight
             self.encoder.net[-1].weight.data = fi.detach()
         else:
@@ -53,11 +48,8 @@ class LAE(nn.Module):
             z = q_z.sample()
             out = self.decoder(z)
             loss = self.energy.calculate(inputs, out)
-            p_z = td.Independent(td.Normal(torch.zeros_like(z), torch.ones_like(z)), 1)
-            kl = td.kl_divergence(q_z, p_z).mean()
-            elbo = loss + kl
 
-        return {"output":out, "loss":loss, "reconstruction_loss": loss, "elbo": elbo}
+        return {"output":out, "loss":loss, "reconstruction_loss": loss}
 
     def __langevin_step(self, inputs, h, fi, retain_graph=False):
         fi.requires_grad_()
@@ -98,6 +90,26 @@ class LAE(nn.Module):
         z = torch.randn(num_points, *self.__z_shape, device=next(self.parameters()).device)
         out = self.decoder(z)
         return out
+
+
+class Encoder(nn.Module):
+
+    def __init__(self, layers: list):
+        super(Encoder, self).__init__()
+        self.net = nn.Sequential(*layers)
+    
+    def forward(self, inputs):
+        return self.net(inputs)
+
+
+class Decoder(nn.Module):
+
+    def __init__(self, layers: list):
+        super(Decoder, self).__init__()
+        self.net = nn.Sequential(*layers)
+    
+    def forward(self, inputs):
+        return self.net(inputs)
 
 
 if __name__ == "__main__":
