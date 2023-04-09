@@ -5,6 +5,7 @@ __pycache__/
 temp
 runs
 log.txt
+models
 
 # C extensions
 *.so

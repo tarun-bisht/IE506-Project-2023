@@ -10,14 +10,15 @@ def train_step(model, optimizer, dataloader, epoch, writer=None, detect_anomaly=
     with torch.autograd.set_detect_anomaly(detect_anomaly):
         for x, _ in tqdm(dataloader):
             x = x.to(device)
+            optimizer.zero_grad()
             output = model(x)
             loss = output["loss"]
             rec_loss = output["reconstruction_loss"]
             loss.backward()
             optimizer.step()
 
-            running_loss += loss.item()*x.size(0)
-            running_rec += rec_loss.item()*x.size(0)
+            running_loss += loss.item()
+            running_rec += rec_loss.item()
             N += x.size(0)
 
     running_loss /= N

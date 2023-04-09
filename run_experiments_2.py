@@ -5,7 +5,7 @@ import torch
 import torch.nn
 import torch.optim as opt
 from project.energy import MSEEnergy, BCEEnergy
-from project.models import LinearLAE, LinearVAE
+from project.models import ConvLAE, ConvVAE
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm
 from src.utils import train_step, val_step, set_seed
@@ -44,9 +44,9 @@ def run(args, seed):
 
     # Model
     if args.model == "LAE":
-        model = LinearLAE(input_shape, args.nh, args.nz, energy, args.num_steps, args.step_size, args.metropolis_hastings, args.out_activation)
+        model = ConvLAE(input_shape, args.nh, args.nz, energy, args.num_steps, args.step_size, args.metropolis_hastings, args.out_activation)
     elif args.model == "VAE":
-        model = LinearVAE(input_shape, args.nh, args.nz, energy, args.out_activation)
+        model = ConvVAE(input_shape, args.nh, args.nz, energy, args.out_activation)
     else:
         model = None
         raise NotImplementedError("Model Specified not implemented")
@@ -57,9 +57,9 @@ def run(args, seed):
 
     if args.log_dir is None:
         if args.model.startswith("LAE"):
-            log_dir = os.path.join("experiment_1", f"{args.dataset}-model-{args.model}-nh{args.nh}-nz{args.nz}-step_size{args.step_size}-num_steps-{args.num_steps}-{'mh' if args.metropolis_hastings else 'no_mh'}-lr{args.lr}-epoch{args.epoch}-seed{args.seed}-loss{args.loss}-out_activation{args.out_activation}")
+            log_dir = os.path.join("experiment_2", f"{args.dataset}-model-{args.model}-nh{args.nh}-nz{args.nz}-step_size{args.step_size}-num_steps-{args.num_steps}-{'mh' if args.metropolis_hastings else 'no_mh'}-lr{args.lr}-epoch{args.epoch}-seed{args.seed}-loss{args.loss}-out_activation{args.out_activation}")
         else:
-            log_dir = os.path.join("experiment_1", f"{args.dataset}-model-{args.model}-nh{args.nh}-nz{args.nz}-lr{args.lr}-epoch{args.epoch}-seed{args.seed}-loss{args.loss}-out_activation{args.out_activation}")
+            log_dir = os.path.join("experiment_2", f"{args.dataset}-model-{args.model}-nh{args.nh}-nz{args.nz}-lr{args.lr}-epoch{args.epoch}-seed{args.seed}-loss{args.loss}-out_activation{args.out_activation}")
     else:
         log_dir = args.log_dir
 
@@ -76,19 +76,20 @@ def run(args, seed):
     for epoch in range(1, args.epoch+1):
         train_losses = train_step(model, optimizer, train_dataloader, epoch, writer, args.detect_anomaly)
         val_losses = val_step(model, val_dataloader, epoch, writer)
-        # Save model
-        if args.save_model:
-            torch.save(model.state_dict(), os.path.join(args.model_path, log_dir, f"model-{epoch}.pt"))
-            if epoch > 1:
-                os.remove(os.path.join(args.model_path, log_dir, f"model-{epoch-1}.pt"))
+
         print("EPOCH:", epoch, "Train Loss: ", train_losses["loss"], "\t", "Validation Loss: ", val_losses["loss"], "\t", "Reconstruction Loss: ", val_losses["reconstruction_loss"])
         if best_rec > val_losses["reconstruction_loss"]:
             best_rec = val_losses["reconstruction_loss"]
-        
+
         stop_counter += 1
         if val_losses["loss"] < best_loss:
             stop_counter = 0
             best_loss = val_losses["loss"]
+            # Save model
+            if args.save_model:
+                torch.save(model.state_dict(), os.path.join(args.model_path, log_dir, f"model-{epoch}.pt"))
+                if epoch > 1:
+                    os.remove(os.path.join(args.model_path, log_dir, f"model-{epoch-1}.pt"))
         
         if stop_counter >= args.patience:
             print("Early Stopping Exiting")
@@ -97,7 +98,7 @@ def run(args, seed):
     val_losses = val_step(model, val_dataloader, epoch, writer)
     
     writer.add_hparams({"model": args.model, "dataset": args.dataset,
-                        "nz": args.nz, "nh": args.nh,
+                        "nz": args.nz, "nh": torch.tensor(args.nh),
                         "lr": args.lr, "batch_size": args.batch_size,
                         "epoch": args.epoch, "seed": args.seed},
                         {"loss": val_losses["loss"]})
@@ -105,7 +106,7 @@ def run(args, seed):
     return best_rec
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Deep Latent Variable LAE Paper Project Experiments 1")
+    parser = argparse.ArgumentParser(description="Deep Latent Variable LAE Paper Project Experiments 2")
     parser.add_argument('--seed', type=int, help='random seed (default: 11)', default=11)
     parser.add_argument("--dataset", type=str, choices=["MNIST", "FASHION", "CIFAR10"],
                         default="MNIST", help='dataset to be used (default: MNIST)')
@@ -114,11 +115,11 @@ if __name__ == "__main__":
     parser.add_argument("--loss", type=str, choices=["MSE", "BCE", "BCELogit"],
                         default="MSE", help='energy loss to be used (default: MSE )')
     parser.add_argument("--out_activation", type=str, choices=["sigmoid", "tanh"],
-                        default=None, help='output layer activation (default: None )')
-    parser.add_argument("--nz", type=int, default=8,
+                        default=None, help='output layer activation (default: sigmoid )')
+    parser.add_argument("--nz", type=int, default=2,
                         help="latent dimensionality")
-    parser.add_argument("--nh", type=int, default=256,
-                        help="number of feature maps (default: 256)")
+    parser.add_argument("--nh", nargs="+", type=int, default=[32, 64],
+                        help="number of feature maps (default: [32, 64])")
     parser.add_argument("--lr", type=float, default=1e-4,
                         help="learning rate (default: 1e-4)")
     parser.add_argument("--step_size", type=float, default=1e-3,

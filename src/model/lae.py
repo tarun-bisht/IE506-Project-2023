@@ -5,7 +5,7 @@ import torch.distributions as td
 
 class LAE(nn.Module):
     # input_shape without batch_size
-    def __init__(self, input_shape, encoder, decoder, energy, num_steps, step_size, metropolis_hastings=True):
+    def __init__(self, input_shape, encoder, decoder, energy, num_steps, step_size, metropolis_hastings=True, out_activation=None):
         super(LAE, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
@@ -13,9 +13,16 @@ class LAE(nn.Module):
         self.num_steps = num_steps
         self.step_size = step_size
         self.mh = metropolis_hastings
+        self.out_activation = out_activation
         self.reset_parameters()
         self.encoder.net[-1].weight.requires_grad_(False)
         self.__z_shape = self.__find_z_shape(input_shape)
+        if out_activation == "sigmoid":
+            self.out_activation = F.sigmoid
+        elif out_activation == "tanh":
+            self.out_activation = F.tanh
+        else:
+            self.out_activation = None
     
     def __find_z_shape(self, input_shape):
         test_sample = torch.randn(1, *input_shape, device=next(self.parameters()).device)
@@ -36,10 +43,8 @@ class LAE(nn.Module):
             fi = self.encoder.net[-1].weight.data
             for _ in range(self.num_steps):
                 fi = self.__langevin_step(inputs, h, fi, retain_graph=True)
-
             z = F.linear(h, fi)
             out = self.decoder(z)
-            loss = self.energy.calculate(inputs, out)
             # update encoder weight
             self.encoder.net[-1].weight.data = fi.detach()
         else:
@@ -47,16 +52,18 @@ class LAE(nn.Module):
             q_z = td.Independent(td.Normal(mu, 0.05), 1)
             z = q_z.sample()
             out = self.decoder(z)
-            loss = self.energy.calculate(inputs, out)
-
-        return {"output":out, "loss":loss, "reconstruction_loss": loss}
+        loss = self.energy.calculate(out, inputs)
+        if self.out_activation is not None:
+            out = self.out_activation(out)
+        recon_loss = F.mse_loss(out, inputs)
+        return {"output":out, "loss":loss, "reconstruction_loss": recon_loss}
 
     def __langevin_step(self, inputs, h, fi, retain_graph=False):
         fi.requires_grad_()
         z = F.linear(h, fi)
         out = self.decoder(z)
-        loss = self.energy.calculate(inputs, out)
-        grad = torch.autograd.grad(loss.mean(), fi, retain_graph=retain_graph)[0]
+        loss = self.energy.calculate(out, inputs)
+        grad = torch.autograd.grad(loss.sum(), fi, retain_graph=retain_graph)[0]
         mu = fi - self.step_size * grad
         sigma = torch.sqrt(torch.tensor(2 * self.step_size/inputs.size(0), device=mu.device))
         # q(fi_prime | fi)
@@ -66,8 +73,8 @@ class LAE(nn.Module):
             fi_p.requires_grad_()
             z_p = F.linear(h, fi_p)
             out = self.decoder(z_p)
-            loss_p = self.energy.calculate(inputs, out)
-            grad = torch.autograd.grad(loss_p.mean(), fi_p)[0]
+            loss_p = self.energy.calculate(out, inputs)
+            grad = torch.autograd.grad(loss_p.sum(), fi_p)[0]
             mu = fi - self.step_size * grad
             sigma = torch.sqrt(torch.tensor(2 * self.step_size/inputs.size(0), device=mu.device))
             # q(fi | fi_prime)
@@ -89,7 +96,21 @@ class LAE(nn.Module):
     def sample(self, num_points=1):
         z = torch.randn(num_points, *self.__z_shape, device=next(self.parameters()).device)
         out = self.decoder(z)
+        if self.out_activation is not None:
+            out = self.out_activation(out)
         return out
+    
+    def predict(self, inputs):
+        mu = self.encoder(inputs)
+        q_z = td.Independent(td.Normal(mu, 0.05), 1)
+        z = q_z.sample()
+        out = self.decoder(z)
+        if self.out_activation is not None:
+            out = self.out_activation(out)
+        return out
+
+    def encode(self, inputs):
+        return self.encoder(inputs)
 
 
 class Encoder(nn.Module):

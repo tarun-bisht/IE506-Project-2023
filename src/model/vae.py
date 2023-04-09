@@ -1,17 +1,24 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.distributions as td
 import copy
 
 class VAE(nn.Module):
     # input_shape without batch_size
-    def __init__(self, input_shape, encoder, decoder, energy):
+    def __init__(self, input_shape, encoder, decoder, energy, out_activation=None):
         super(VAE, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
         self.energy = energy
         self.reset_parameters()
         self.__z_shape = self.__find_z_shape(input_shape)
+        if out_activation == "sigmoid":
+            self.out_activation = F.sigmoid
+        elif out_activation == "tanh":
+            self.out_activation = F.tanh
+        else:
+            self.out_activation = None
     
     def __find_z_shape(self, input_shape):
         test_sample = torch.randn(1, *input_shape, device=next(self.parameters()).device)
@@ -29,21 +36,38 @@ class VAE(nn.Module):
     def forward(self, inputs):
         mu_z, log_sigma_z = self.encoder(inputs)
         sigma_z = torch.exp(0.5 * log_sigma_z)
-        q_z = td.Independent(td.Normal(mu_z, sigma_z), 1)
+        q_z = td.Normal(mu_z, sigma_z)
         z = q_z.rsample()
         out = self.decoder(z)
         # calculate loss
-        energy = self.energy.calculate(inputs, out)
-        p_z = td.Independent(td.Normal(torch.zeros_like(z), torch.ones_like(z)), 1)
-        regularization = td.kl_divergence(q_z, p_z).mean()
+        energy = self.energy.calculate(out, inputs)
+        p_z = td.Normal(torch.zeros_like(z), torch.ones_like(z))
+        regularization = td.kl_divergence(q_z, p_z).sum()
         loss = energy + regularization
-
-        return {"output":out, "loss":loss, "reconstruction_loss": energy}
+        if self.out_activation is not None:
+            out = self.out_activation(out)
+        recon_loss = F.mse_loss(out, inputs)
+        return {"output":out, "loss":loss, "reconstruction_loss": recon_loss}
 
     def sample(self, num_points=1):
         z = torch.randn(num_points, *self.__z_shape, device=next(self.parameters()).device)
         out = self.decoder(z)
+        if self.out_activation is not None:
+            out = self.out_activation(out)
         return out
+
+    def predict(self, inputs):
+        mu_z, log_sigma_z = self.encoder(inputs)
+        sigma_z = torch.exp(0.5 * log_sigma_z)
+        q_z = td.Normal(mu_z, sigma_z)
+        z = q_z.rsample()
+        out = self.decoder(z)
+        if self.out_activation is not None:
+            out = self.out_activation(out)
+        return out
+    
+    def encode(self, inputs):
+        return self.encoder(inputs)
 
 
 class Encoder(nn.Module):

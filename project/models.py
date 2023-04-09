@@ -43,59 +43,65 @@ def __create_conv_blocks(input_shape, hidden_filters, latent_dim):
 
     enc_layers = []
     enc_layers.append(nn.Conv2d(in_channels=input_shape[0], out_channels=hidden_filters[0], kernel_size=3, stride=2, padding=1))
-    enc_layers.append(nn.BatchNorm2d(hidden_filters[0]))
-    enc_layers.append(nn.LeakyReLU())
+    enc_layers.append(nn.ReLU())
     for i in range(len(hidden_filters)-1):
         enc_layers.append(nn.Conv2d(in_channels=hidden_filters[i], out_channels=hidden_filters[i+1], kernel_size=3, stride=2, padding=1))
-        enc_layers.append(nn.BatchNorm2d(hidden_filters[i+1]))
-        enc_layers.append(nn.LeakyReLU())
+        enc_layers.append(nn.ReLU())
     enc_layers.append(nn.Flatten())
     size = hidden_filters[-1]*inp_shape_w*inp_shape_h
-    enc_layers.append(nn.Linear(in_features=size, out_features=latent_dim))
+    enc_layers.append(nn.Linear(in_features=size, out_features=16))
+    enc_layers.append(nn.Linear(in_features=16, out_features=latent_dim))
     dec_layers = []
     dec_layers.append(nn.Linear(in_features=latent_dim, out_features=size))
     dec_layers.append(nn.Unflatten(1, (hidden_filters[-1], inp_shape_w, inp_shape_h)))
     dec_layers.append(nn.ConvTranspose2d(in_channels=hidden_filters[-1], out_channels=hidden_filters[-1], kernel_size=3, stride=2, padding=1, output_padding=1))
+    dec_layers.append(nn.ReLU())
     for i in range(len(hidden_filters)-1, 0, -1):
         dec_layers.append(nn.ConvTranspose2d(in_channels=hidden_filters[i], out_channels=hidden_filters[i-1], kernel_size=(3, 3), stride=2, padding=1, output_padding=1))
-        dec_layers.append(nn.LeakyReLU())
+        dec_layers.append(nn.ReLU())
     dec_layers.append(nn.Conv2d(in_channels=hidden_filters[0], out_channels=input_shape[0], kernel_size=(3, 3), padding='same'))
-    dec_layers.append(nn.Sigmoid())
     return enc_layers, dec_layers
 
 ## Layers
-def LinearLAE(input_shape, nh, nz, energy, num_steps, step_size, metropolis_hastings):
+def LinearLAE(input_shape, nh, nz, energy, num_steps, step_size, metropolis_hastings, out_activation=None):
     enc_layers, dec_layers = __create_linear_blocks(input_shape, nh, nz)
     enc = lae.Encoder(enc_layers)
     dec = lae.Decoder(dec_layers)
     model = lae.LAE(input_shape=input_shape, 
                     encoder=enc, decoder=dec, 
                     energy=energy, num_steps=num_steps, 
-                    step_size=step_size, metropolis_hastings=metropolis_hastings)
+                    step_size=step_size, 
+                    metropolis_hastings=metropolis_hastings,
+                    out_activation=out_activation)
     return model
 
-def LinearVAE(input_shape, nh, nz, energy):
+def LinearVAE(input_shape, nh, nz, energy, out_activation=None):
     enc_layers, dec_layers = __create_linear_blocks(input_shape, nh, nz)
     enc = vae.Encoder(enc_layers)
     dec = vae.Decoder(dec_layers)
-    model = vae.VAE(input_shape=input_shape, encoder=enc, decoder=dec, energy=energy)
+    model = vae.VAE(input_shape=input_shape, encoder=enc, 
+                    decoder=dec, energy=energy, 
+                    out_activation=out_activation)
     return model
 
-def ConvLAE(input_shape, hidden_filters, latent_dim, energy, num_steps, step_size, metropolis_hastings):
+def ConvLAE(input_shape, hidden_filters, latent_dim, energy, num_steps, step_size, metropolis_hastings, out_activation=None):
     enc_layers, dec_layers = __create_conv_blocks(input_shape, hidden_filters, latent_dim)
     enc = lae.Encoder(enc_layers)
     dec = lae.Decoder(dec_layers)
     model = lae.LAE(input_shape=input_shape, 
                     encoder=enc, decoder=dec, 
                     energy=energy, num_steps=num_steps, 
-                    step_size=step_size, metropolis_hastings=metropolis_hastings)
+                    step_size=step_size, 
+                    metropolis_hastings=metropolis_hastings,
+                    out_activation=out_activation)
     return model
 
-def ConvVAE(input_shape, hidden_filters, latent_dim, energy):
+def ConvVAE(input_shape, hidden_filters, latent_dim, energy, out_activation=None):
     enc_layers, dec_layers = __create_conv_blocks(input_shape, hidden_filters, latent_dim) 
     enc = vae.Encoder(enc_layers)
     dec = vae.Decoder(dec_layers)
-    model = vae.VAE(input_shape=input_shape, encoder=enc, decoder=dec, energy=energy)
+    model = vae.VAE(input_shape=input_shape, encoder=enc, 
+                    decoder=dec, energy=energy, out_activation=out_activation)
     return model
     
 
