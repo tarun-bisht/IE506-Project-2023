@@ -6,6 +6,7 @@ temp
 runs
 log.txt
 models
+results
 
 # C extensions
 *.so

@@ -13,6 +13,8 @@ class VAE(nn.Module):
         self.energy = energy
         self.reset_parameters()
         self.__z_shape = self.__find_z_shape(input_shape)
+        self.latent_dim = torch.sum(torch.tensor(self.__z_shape)).item()
+        self.latent_shape = self.__z_shape
         if out_activation == "sigmoid":
             self.out_activation = F.sigmoid
         elif out_activation == "tanh":
@@ -67,7 +69,12 @@ class VAE(nn.Module):
         return out
     
     def encode(self, inputs):
-        return self.encoder(inputs)
+        mu_z, log_sigma_z = self.encoder(inputs)
+        sigma_z = torch.exp(0.5 * log_sigma_z)
+        return td.Normal(mu_z, sigma_z)
+    
+    def decode(self, inputs):
+        return self.decoder(inputs)
 
 
 class Encoder(nn.Module):

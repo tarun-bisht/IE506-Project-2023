@@ -17,6 +17,8 @@ class LAE(nn.Module):
         self.reset_parameters()
         self.encoder.net[-1].weight.requires_grad_(False)
         self.__z_shape = self.__find_z_shape(input_shape)
+        self.latent_dim = torch.sum(torch.tensor(self.__z_shape)).item()
+        self.latent_shape = self.__z_shape
         if out_activation == "sigmoid":
             self.out_activation = F.sigmoid
         elif out_activation == "tanh":
@@ -110,7 +112,11 @@ class LAE(nn.Module):
         return out
 
     def encode(self, inputs):
-        return self.encoder(inputs)
+        mu = self.encoder(inputs)
+        return td.Independent(td.Normal(mu, 0.05), 1)
+    
+    def decode(self, inputs):
+        return self.decoder(inputs)
 
 
 class Encoder(nn.Module):
