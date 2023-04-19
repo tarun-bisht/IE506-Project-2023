@@ -113,7 +113,7 @@ def run(args, seed):
             best_loss = val_losses["loss"]
             # Save model
             if args.save_model:
-                torch.save(classifier.state_dict(), os.path.join(args.model_path, log_dir, f"exp5-model.pt"))
+                torch.save(classifier.state_dict(), os.path.join(args.model_path, log_dir, f"exp5-model-{args.seed}.pt"))
         
         if stop_counter >= args.patience:
             print("Early Stopping Exiting")
