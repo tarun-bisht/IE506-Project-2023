@@ -76,11 +76,6 @@ def run(args, seed):
     for epoch in range(1, args.epoch+1):
         train_losses = train_step(model, optimizer, train_dataloader, epoch, writer, args.detect_anomaly)
         val_losses = val_step(model, val_dataloader, epoch, writer)
-        # Save model
-        if args.save_model:
-            torch.save(model.state_dict(), os.path.join(args.model_path, log_dir, f"model-{epoch}.pt"))
-            if epoch > 1:
-                os.remove(os.path.join(args.model_path, log_dir, f"model-{epoch-1}.pt"))
         print("EPOCH:", epoch, "Train Loss: ", train_losses["loss"], "\t", "Validation Loss: ", val_losses["loss"], "\t", "Reconstruction Loss: ", val_losses["reconstruction_loss"])
         if best_rec > val_losses["reconstruction_loss"]:
             best_rec = val_losses["reconstruction_loss"]
@@ -89,6 +84,11 @@ def run(args, seed):
         if val_losses["loss"] < best_loss:
             stop_counter = 0
             best_loss = val_losses["loss"]
+            # Save model
+            if args.save_model:
+                torch.save(model.state_dict(), os.path.join(args.model_path, log_dir, f"model-{epoch}.pt"))
+                if epoch > 1:
+                    os.remove(os.path.join(args.model_path, log_dir, f"model-{epoch-1}.pt"))
         
         if stop_counter >= args.patience:
             print("Early Stopping Exiting")
