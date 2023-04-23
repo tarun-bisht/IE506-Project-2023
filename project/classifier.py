@@ -57,6 +57,7 @@ def train_step(model, criterion, optimizer, dataloader, num_samples, epoch, writ
     with torch.autograd.set_detect_anomaly(detect_anomaly):
         for x, y in tqdm(dataloader):
             x = x.to(device)
+            y = y.to(device)
             optimizer.zero_grad()
             output = model(x)
             loss = cal_loss_latent_space(criterion, output, y, num_samples)
@@ -89,6 +90,7 @@ def val_step(model, criterion, dataloader, epoch, writer=None):
     with torch.no_grad():
         for x, y in tqdm(dataloader):
             x = x.to(device)
+            y = y.to(device)
             output = model(x)
             loss = criterion(output, y)
             running_loss += loss.item()

@@ -90,7 +90,7 @@ def run(args, seed):
     # Tensorboard
     writer = SummaryWriter(os.path.join('runs', log_dir))
     x, _ = next(iter(train_dataloader))
-    writer.add_graph(classifier, x)
+    writer.add_graph(classifier, x.to(device=device))
     # make a diectory for saving models
     if args.save_model:
         os.makedirs(os.path.join(args.model_path, log_dir), exist_ok=True)
