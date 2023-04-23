@@ -6,9 +6,11 @@ from sklearn.decomposition import PCA
 
 
 def set_seed(seed):
+    torch.backends.cudnn.deterministic = True
     torch.manual_seed(seed)
-    random.seed(seed)
+    torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
+    random.seed(seed)
 
 def plot_dataloader(dataloader, labelmap, nrows=2, ncols=4):
     imgs, labels = next(iter(dataloader))

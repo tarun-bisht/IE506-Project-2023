@@ -82,7 +82,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_steps", type=int, default=2)
     parser.add_argument("--metropolis_hastings", "-mh", action='store_true',
                         help="Metropolis Hastings rejection step")
-    parser.add_argument("--batch_size", type=int, default=32,
+    parser.add_argument("--batch_size", type=int, default=512,
                         help="batch size (default: 32)")
     parser.add_argument("--image_name", type=str, default=None)
     parser.add_argument("--weights", type=str, default=None)
