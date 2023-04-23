@@ -27,7 +27,7 @@ class Classifier(nn.Module):
         distrib = self.dlvm.encode(inputs)
         if self.training:
             outs = []
-            z = distrib.sample((self.num_samples,))
+            z = distrib.rsample((self.num_samples,))
             for sample in z:
                 outs.append(self.dense(F.relu(sample)))
             return torch.cat(outs, dim=0)
