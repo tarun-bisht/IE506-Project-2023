@@ -74,7 +74,10 @@ class VAE(nn.Module):
         return td.Normal(mu_z, sigma_z)
     
     def decode(self, inputs):
-        return self.decoder(inputs)
+        out = self.decoder(inputs)
+        if self.out_activation is not None:
+            out = self.out_activation(out)
+        return out
 
 
 class Encoder(nn.Module):

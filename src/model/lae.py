@@ -116,7 +116,10 @@ class LAE(nn.Module):
         return td.Independent(td.Normal(mu, 0.05), 1)
     
     def decode(self, inputs):
-        return self.decoder(inputs)
+        out = self.decoder(inputs)
+        if self.out_activation is not None:
+            out = self.out_activation(out)
+        return out
 
 
 class Encoder(nn.Module):

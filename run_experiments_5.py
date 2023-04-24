@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.optim as opt
 from project.energy import MSEEnergy
 from project.models import ConvLAE, ConvVAE, LinearLAE, LinearVAE
-from project.classifier import Classifier, train_step, val_step
+from project.classifier import Classifier, train_step, val_step, CNNModel
 from torch.utils.tensorboard import SummaryWriter
 from src.utils import set_seed
 
@@ -42,6 +42,8 @@ def run(args, seed):
         criterion = nn.BCEWithLogitsLoss()
     elif args.loss == "CE":
         criterion = nn.CrossEntropyLoss()
+    elif args.loss == "NLL":
+        criterion = nn.NLLLoss()
     else:
         raise NotImplementedError("Specified Loss not Implemented")
 
@@ -49,16 +51,16 @@ def run(args, seed):
     model = None
     if args.experiment == 2:
         if args.model == "LAE":
-            model = ConvLAE(input_shape, args.nh2, args.nz, energy, args.num_steps, args.step_size, args.metropolis_hastings)
+            model = ConvLAE(input_shape, args.nh2, args.nz, energy, args.num_steps, args.step_size, args.metropolis_hastings, args.dlvm_out_activation)
         elif args.model == "VAE":
-            model = ConvVAE(input_shape, args.nh2, args.nz, energy)
+            model = ConvVAE(input_shape, args.nh2, args.nz, energy, args.dlvm_out_activation)
         else:
             raise NotImplementedError("Model Specified not implemented")
     elif args.experiment == 1:
         if args.model == "LAE":
-            model = LinearLAE(input_shape, args.nh1, args.nz, energy, args.num_steps, args.step_size, args.metropolis_hastings)
+            model = LinearLAE(input_shape, args.nh1, args.nz, energy, args.num_steps, args.step_size, args.metropolis_hastings, args.dlvm_out_activation)
         elif args.model == "VAE":
-            model = LinearVAE(input_shape, args.nh1, args.nz, energy)
+            model = LinearVAE(input_shape, args.nh1, args.nz, energy, args.dlvm_out_activation)
         else:
             raise NotImplementedError("Model Specified not implemented")
 
@@ -69,7 +71,8 @@ def run(args, seed):
         for param in model.parameters():
             param.requires_grad = False
 
-    classifier = Classifier(model, len(label), args.out_activation, args.num_samples)
+    classifier = Classifier(model, args.num_samples)
+    # classifier = CNNModel()
     classifier.to(device=device)
     params = classifier.parameters()
     optimizer = opt.Adam(params, lr=args.lr)
@@ -89,8 +92,6 @@ def run(args, seed):
 
     # Tensorboard
     writer = SummaryWriter(os.path.join('runs', log_dir))
-    x, _ = next(iter(train_dataloader))
-    writer.add_graph(classifier, x.to(device=device))
     # make a diectory for saving models
     if args.save_model:
         os.makedirs(os.path.join(args.model_path, log_dir), exist_ok=True)
@@ -100,7 +101,7 @@ def run(args, seed):
     best_loss = torch.inf
     stop_counter = 0
     for epoch in range(1, args.epoch+1):
-        train_losses = train_step(classifier, criterion, optimizer, train_dataloader, args.num_samples, epoch, writer, args.detect_anomaly)
+        train_losses = train_step(classifier, criterion, optimizer, train_dataloader, args.num_samples, epoch, writer)
         val_losses = val_step(classifier, criterion, val_dataloader, epoch, writer)
 
         print("EPOCH:", epoch, "Train Loss: ", train_losses["loss"], "\t", "Train Accuracy: ", train_losses["accuracy"], "\t", "Validation Loss: ", val_losses["loss"], "\t", "Val Accuracy: ", val_losses["accuracy"])
@@ -133,10 +134,10 @@ if __name__ == "__main__":
                         default="MNIST", help='dataset to be used (default: MNIST)')
     parser.add_argument("--model", type=str, choices=["LAE", "VAE"],
                         default="VAE", help='model to be used (default: VAE (Linear VAE))')
-    parser.add_argument("--loss", type=str, choices=["MSE", "BCE", "BCELogit", "CE"],
-                        default="CE", help='energy loss to be used (default: CE )')
-    parser.add_argument("--out_activation", type=str, choices=["sigmoid", "tanh", "softmax"],
-                        default=None, help='output layer activation (default: None )')
+    parser.add_argument("--loss", type=str, choices=["MSE", "BCE", "BCELogit", "CE", "NLL"],
+                        default="NLL", help='energy loss to be used (default: CE )')
+    parser.add_argument("--dlvm_out_activation", "-dlvm_out", type=str, choices=["sigmoid", "tanh"],
+                        default=None, help='output layer activation of DLVM (default: None )')
     parser.add_argument("--nz", type=int, default=2,
                         help="latent dimensionality")
     parser.add_argument("--nh1", type=int, default=256,
@@ -163,8 +164,8 @@ if __name__ == "__main__":
     parser.add_argument("--weights", type=str, default=None, help="Path to trained weight of deep latent variable model")
     parser.add_argument("--experiment", type=int, choices=[1, 2],
                         default=1, help='model trained using which experiment (default: 1 (Linear VAE))')
-    parser.add_argument("--freeze", action='store_true', default=False)
-    parser.add_argument("--num_samples", type=int, default=1,
+    parser.add_argument("--freeze", action='store_true', default=True)
+    parser.add_argument("--num_samples", type=int, default=0,
                         help="Number of samples to samples from latent variable to calculate loss")
     args = parser.parse_args()
 
