@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.optim as opt
 from project.energy import MSEEnergy
 from project.models import ConvLAE, ConvVAE, LinearLAE, LinearVAE
-from project.classifier import Classifier, train_step, val_step, CNNModel
+from project.classifier import Classifier, train_step, val_step
 from torch.utils.tensorboard import SummaryWriter
 from src.utils import set_seed
 
@@ -84,9 +84,9 @@ def run(args, seed):
 
     if args.log_dir is None:
         if args.model.startswith("LAE"):
-            log_dir = os.path.join("experiment_5", f"{args.dataset}-model-{args.model}-nz{args.nz}-lr{args.lr}-epoch{args.epoch}-seed{args.seed}-loss{args.loss}")
+            log_dir = os.path.join("experiment_5", f"{args.dataset}-model-{args.model}-nz{args.nz}-lr{args.lr}-epoch{args.epoch}-seed{args.seed}-loss{args.loss}-num_samples{args.num_samples}")
         else:
-            log_dir = os.path.join("experiment_5", f"{args.dataset}-model-{args.model}-nz{args.nz}-lr{args.lr}-epoch{args.epoch}-seed{args.seed}-loss{args.loss}")
+            log_dir = os.path.join("experiment_5", f"{args.dataset}-model-{args.model}-nz{args.nz}-lr{args.lr}-epoch{args.epoch}-seed{args.seed}-loss{args.loss}-num_samples{args.num_samples}")
     else:
         log_dir = args.log_dir
 
