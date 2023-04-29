@@ -43,6 +43,7 @@ def plot_latent_space(model, num_images=30, figsize=15, scale=1, save_path=None)
                             gridspec_kw={"wspace":0.0, "hspace":0.0})
     fig.tight_layout(pad=0)
     images = model.decode(hidden_zs)
+    images = torch.nn.functional.sigmoid(images)
     images = images.permute((0, 2, 3, 1))
     images = images.cpu().detach().numpy()
     cmap = None
