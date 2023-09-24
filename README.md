@@ -11,10 +11,15 @@ pip install -r requirements.txt
 ## Experiments
 
 (1) evaluate the generation capability of LAE and compare it to VAE 
+
 (2) compare the latent space of VAE and LAE 
+
 (3) evaluate the representation learning capability of LAE and compare it 5with VAE 
+
 (4) evaluate the effectiveness of our proposed training method
+
 (5) evaluate whether our proposed training method is robust toward adversarial attacks 
+
 (6) generation of samples from interpolation of latent space. 
 
 These experiments are primarily conducted on linear encoder and decoder using the MNIST datasets and the PyTorch torch distributions framework.
